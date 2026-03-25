@@ -1,0 +1,13 @@
+{
+  "name": "sms-grades-extension",
+  "version": "1.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "node esbuild.config.mjs --dev",
+    "build": "node esbuild.config.mjs",
+    "package": "npm run build && cd dist && zip -r ../sms-grades-extension.zip ."
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
