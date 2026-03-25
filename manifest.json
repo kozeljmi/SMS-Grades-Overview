@@ -11,7 +11,17 @@
   "permissions": ["activeTab", "storage"],
   "host_permissions": ["https://sms.eursc.eu/*"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "sms-grades@kmiguel.com",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
   },
   "action": {
     "default_popup": "popup.html",

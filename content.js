@@ -6,6 +6,30 @@
 
   const BASE_URL = "https://sms.eursc.eu/content/studentui/grades_details.php";
 
+  function el(tag, attrs, children) {
+    const e = document.createElement(tag);
+    if (attrs) {
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "className") e.className = v;
+        else if (k === "id") e.id = v;
+        else if (k === "textContent") e.textContent = v;
+        else if (k === "style" && typeof v === "object") Object.assign(e.style, v);
+        else e.setAttribute(k, v);
+      }
+    }
+    if (children) {
+      for (const child of Array.isArray(children) ? children : [children]) {
+        if (typeof child === "string") e.appendChild(document.createTextNode(child));
+        else if (child) e.appendChild(child);
+      }
+    }
+    return e;
+  }
+
+  function clearChildren(node) {
+    while (node.firstChild) node.removeChild(node.firstChild);
+  }
+
   function fetchPage(url) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({ type: "fetchPage", url }, (response) => {
@@ -91,24 +115,21 @@
   }
 
   function createWidget() {
-    const widget = document.createElement("div");
-    widget.id = "sms-grades-widget";
-    widget.innerHTML = `
-      <div class="sms-grades-header">
-        <h3>Grades Overview</h3>
-        <div class="sms-grades-general-avg" id="sms-grades-general-avg"></div>
-      </div>
-      <div class="sms-grades-cards" id="sms-grades-cards">
-        <div class="sms-grades-loading">Loading grades...</div>
-      </div>
-      <div class="sms-grades-section">
-        <h4>Recent Grades</h4>
-        <div id="sms-grades-recent">
-          <div class="sms-grades-loading">Loading...</div>
-        </div>
-      </div>
-    `;
-    return widget;
+    return el("div", { id: "sms-grades-widget" }, [
+      el("div", { className: "sms-grades-header" }, [
+        el("h3", { textContent: "Grades Overview" }),
+        el("div", { className: "sms-grades-general-avg", id: "sms-grades-general-avg" }),
+      ]),
+      el("div", { className: "sms-grades-cards", id: "sms-grades-cards" }, [
+        el("div", { className: "sms-grades-loading", textContent: "Loading grades..." }),
+      ]),
+      el("div", { className: "sms-grades-section" }, [
+        el("h4", { textContent: "Recent Grades" }),
+        el("div", { id: "sms-grades-recent" }, [
+          el("div", { className: "sms-grades-loading", textContent: "Loading..." }),
+        ]),
+      ]),
+    ]);
   }
 
   function renderGeneralAverage(results) {
@@ -119,50 +140,44 @@
       .filter((r) => r.data && r.data.weightedAvg != null)
       .map((r) => r.data.weightedAvg);
 
-    if (subjectAverages.length === 0) {
-      container.innerHTML = "";
-      return;
-    }
+    clearChildren(container);
+    if (subjectAverages.length === 0) return;
 
     const generalAvg = subjectAverages.reduce((sum, v) => sum + v, 0) / subjectAverages.length;
     const color = gradeColor(generalAvg);
     LOG(`General average: ${generalAvg.toFixed(1)} across ${subjectAverages.length} subjects`);
 
-    container.innerHTML = `
-      <span class="sms-general-avg-badge" style="background-color:${color};">${generalAvg.toFixed(1)}</span>
-      <span class="sms-general-avg-label">General Average (${subjectAverages.length} subjects)</span>
-    `;
+    container.appendChild(
+      el("span", { className: "sms-general-avg-badge", style: { backgroundColor: color }, textContent: generalAvg.toFixed(1) })
+    );
+    container.appendChild(
+      el("span", { className: "sms-general-avg-label", textContent: `General Average (${subjectAverages.length} subjects)` })
+    );
   }
 
   function renderCards(results) {
     const container = document.getElementById("sms-grades-cards");
     if (!container) return;
 
-    container.innerHTML = "";
+    clearChildren(container);
     LOG(`Rendering ${results.length} course cards`);
 
     for (const { course, data, error } of results) {
-      const card = document.createElement("div");
-      card.className = "sms-grade-card";
+      const nameEl = el("div", { className: "sms-grade-card-name", textContent: course.name });
 
+      let avgEl, infoEl;
       if (error) {
-        card.innerHTML = `
-          <div class="sms-grade-card-name">${course.name}</div>
-          <div class="sms-grade-card-avg" style="background-color:#999;">Error</div>
-          <div class="sms-grade-card-info">${error}</div>
-        `;
+        avgEl = el("div", { className: "sms-grade-card-avg", style: { backgroundColor: "#999" }, textContent: "Error" });
+        infoEl = el("div", { className: "sms-grade-card-info", textContent: error });
       } else {
         const avg = data.weightedAvg;
         const avgDisplay = avg != null ? avg.toFixed(1) : "N/A";
         const color = gradeColor(avg);
-        card.innerHTML = `
-          <div class="sms-grade-card-name">${course.name}</div>
-          <div class="sms-grade-card-avg" style="background-color:${color};">${avgDisplay}</div>
-          <div class="sms-grade-card-info">${data.gradedCount} / ${data.totalCount} graded</div>
-        `;
+        avgEl = el("div", { className: "sms-grade-card-avg", style: { backgroundColor: color }, textContent: avgDisplay });
+        infoEl = el("div", { className: "sms-grade-card-info", textContent: `${data.gradedCount} / ${data.totalCount} graded` });
       }
 
-      container.appendChild(card);
+      container.appendChild(el("div", { className: "sms-grade-card" }, [nameEl, avgEl, infoEl]));
     }
   }
 
@@ -189,35 +204,34 @@
     const recent = allGraded.slice(0, 10);
     LOG(`Rendering ${recent.length} recent grades`);
 
+    clearChildren(container);
+
     if (recent.length === 0) {
-      container.innerHTML = '<div class="sms-grades-empty">No graded assignments yet.</div>';
+      container.appendChild(el("div", { className: "sms-grades-empty", textContent: "No graded assignments yet." }));
       return;
     }
 
-    let html = `<table class="sms-grades-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Subject</th>
-          <th>Description</th>
-          <th>Grade</th>
-        </tr>
-      </thead>
-      <tbody>`;
+    const headerRow = el("tr", null, ["Date", "Subject", "Description", "Grade"].map(
+      (text) => el("th", { textContent: text })
+    ));
 
+    const tbody = el("tbody");
     for (const g of recent) {
       const color = gradeColor(g.gradeValue);
-      html += `
-        <tr>
-          <td>${g.date}</td>
-          <td>${g.courseName}</td>
-          <td>${g.description}</td>
-          <td><span class="sms-grade-badge" style="background-color:${color};">${g.gradeValue.toFixed(1)}</span></td>
-        </tr>`;
+      tbody.appendChild(el("tr", null, [
+        el("td", { textContent: g.date }),
+        el("td", { textContent: g.courseName }),
+        el("td", { textContent: g.description }),
+        el("td", null, [
+          el("span", { className: "sms-grade-badge", style: { backgroundColor: color }, textContent: g.gradeValue.toFixed(1) }),
+        ]),
+      ]));
     }
 
-    html += "</tbody></table>";
-    container.innerHTML = html;
+    container.appendChild(el("table", { className: "sms-grades-table" }, [
+      el("thead", null, [headerRow]),
+      tbody,
+    ]));
   }
 
   async function init() {
@@ -241,15 +255,17 @@
       allCourses = parseCourseList(html);
     } catch (err) {
       ERR("Failed to fetch course list:", err.message);
-      document.getElementById("sms-grades-cards").innerHTML =
-        '<div class="sms-grades-loading">Failed to load courses. Are you logged in?</div>';
+      const cards = document.getElementById("sms-grades-cards");
+      clearChildren(cards);
+      cards.appendChild(el("div", { className: "sms-grades-loading", textContent: "Failed to load courses. Are you logged in?" }));
       return;
     }
 
     if (allCourses.length === 0) {
       LOG("No courses found");
-      document.getElementById("sms-grades-cards").innerHTML =
-        '<div class="sms-grades-empty">No courses found.</div>';
+      const cards = document.getElementById("sms-grades-cards");
+      clearChildren(cards);
+      cards.appendChild(el("div", { className: "sms-grades-empty", textContent: "No courses found." }));
       return;
     }
 
@@ -264,9 +280,10 @@
     LOG(`Visible: ${visibleCourses.length}, hidden: ${hiddenCourses.length}`);
 
     if (visibleCourses.length === 0) {
-      document.getElementById("sms-grades-cards").innerHTML =
-        '<div class="sms-grades-empty">All courses are hidden. Use the extension popup to show courses.</div>';
-      document.getElementById("sms-grades-recent").innerHTML = "";
+      const cards = document.getElementById("sms-grades-cards");
+      clearChildren(cards);
+      cards.appendChild(el("div", { className: "sms-grades-empty", textContent: "All courses are hidden. Use the extension popup to show courses." }));
+      clearChildren(document.getElementById("sms-grades-recent"));
       return;
     }
 

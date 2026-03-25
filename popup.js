@@ -7,8 +7,10 @@
   ]);
 
   if (allCourses.length === 0) {
-    container.innerHTML =
-      '<p class="empty">No courses found yet. Visit the SMS dashboard first.</p>';
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.textContent = "No courses found yet. Visit the SMS dashboard first.";
+    container.appendChild(p);
     return;
   }
 
