@@ -1,5 +1,5 @@
-const LOG = DEV ? (...args) => console.log("[SMS Grades BG]", ...args) : () => {};
-const ERR = DEV ? (...args) => console.error("[SMS Grades BG]", ...args) : () => {};
+const LOG = (typeof DEV === "undefined" || DEV) ? (...args) => console.log("[SMS Grades BG]", ...args) : () => {};
+const ERR = (typeof DEV === "undefined" || DEV) ? (...args) => console.error("[SMS Grades BG]", ...args) : () => {};
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "fetchPage") {

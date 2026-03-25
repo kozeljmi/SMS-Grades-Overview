@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SMS Grades Overview",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Shows a grades overview on the sms.eursc.eu dashboard",
   "icons": {
     "16": "icons/icon16.png",
@@ -11,17 +11,7 @@
   "permissions": ["activeTab", "storage"],
   "host_permissions": ["https://sms.eursc.eu/*"],
   "background": {
-    "service_worker": "background.js",
-    "scripts": ["background.js"]
-  },
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "sms-grades@kmiguel.com",
-      "strict_min_version": "142.0",
-      "data_collection_permissions": {
-        "required": ["none"]
-      }
-    }
+    "service_worker": "background.js"
   },
   "action": {
     "default_popup": "popup.html",
@@ -33,7 +23,7 @@
   "content_scripts": [
     {
       "matches": ["https://sms.eursc.eu/content/common/dashboard.php*"],
-      "js": ["dev-flag.js", "content.js"],
+      "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     }

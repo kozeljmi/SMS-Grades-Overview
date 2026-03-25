@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  const LOG = DEV ? (...args) => console.log("[SMS Grades]", ...args) : () => {};
-  const ERR = DEV ? (...args) => console.error("[SMS Grades]", ...args) : () => {};
+  const LOG = (typeof DEV === "undefined" || DEV) ? (...args) => console.log("[SMS Grades]", ...args) : () => {};
+  const ERR = (typeof DEV === "undefined" || DEV) ? (...args) => console.error("[SMS Grades]", ...args) : () => {};
 
   const BASE_URL = "https://sms.eursc.eu/content/studentui/grades_details.php";
 
@@ -102,6 +102,29 @@
 
     LOG(`Parsed: ${graded.length} graded, ${grades.length} total, avg=${weightedAvg?.toFixed(1) ?? "N/A"}`);
     return { grades, weightedAvg, gradedCount: graded.length, totalCount: grades.length };
+  }
+
+  const DATE_CUTOFF = new Date(2026, 1, 27); // Feb 27, 2026
+
+  function parseDate(str) {
+    const [d, m, y] = str.split("/").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function applyDateFilter(data, filter) {
+    if (filter === "all") return data;
+    const filtered = data.grades.filter((g) => {
+      const d = parseDate(g.date);
+      return filter === "before" ? d < DATE_CUTOFF : d >= DATE_CUTOFF;
+    });
+    const graded = filtered.filter((g) => g.isGraded && g.weight > 0);
+    let weightedAvg = null;
+    if (graded.length > 0) {
+      const totalWeighted = graded.reduce((sum, g) => sum + g.gradeValue * g.weight, 0);
+      const totalWeight = graded.reduce((sum, g) => sum + g.weight, 0);
+      weightedAvg = totalWeighted / totalWeight;
+    }
+    return { grades: filtered, weightedAvg, gradedCount: graded.length, totalCount: filtered.length };
   }
 
   function gradeColor(value) {
@@ -273,8 +296,8 @@
     chrome.storage.local.set({ allCourses });
     LOG("Saved course list to storage");
 
-    // Step 2: Filter out hidden courses
-    const { hiddenCourses = [] } = await chrome.storage.local.get("hiddenCourses");
+    // Step 2: Read settings
+    const { hiddenCourses = [], dateFilter = "all" } = await chrome.storage.local.get(["hiddenCourses", "dateFilter"]);
     const hiddenSet = new Set(hiddenCourses);
     const visibleCourses = allCourses.filter((c) => !hiddenSet.has(c.id));
     LOG(`Visible: ${visibleCourses.length}, hidden: ${hiddenCourses.length}`);
@@ -303,10 +326,17 @@
 
     await Promise.all(promises);
 
+    // Step 4: Apply date filter
+    LOG(`Date filter: ${dateFilter}`);
+    const filtered = results.map((r) => {
+      if (!r.data) return r;
+      return { ...r, data: applyDateFilter(r.data, dateFilter) };
+    });
+
     LOG("All courses fetched, rendering...");
-    renderGeneralAverage(results);
-    renderCards(results);
-    renderRecent(results);
+    renderGeneralAverage(filtered);
+    renderCards(filtered);
+    renderRecent(filtered);
     LOG("Done!");
   }
 

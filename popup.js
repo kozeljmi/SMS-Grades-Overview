@@ -1,10 +1,18 @@
 (async function () {
   const container = document.getElementById("course-list");
 
-  const { allCourses = [], hiddenCourses = [] } = await chrome.storage.local.get([
+  const { allCourses = [], hiddenCourses = [], dateFilter = "all" } = await chrome.storage.local.get([
     "allCourses",
     "hiddenCourses",
+    "dateFilter",
   ]);
+
+  // Date filter
+  const filterSelect = document.getElementById("date-filter");
+  filterSelect.value = dateFilter;
+  filterSelect.addEventListener("change", () => {
+    chrome.storage.local.set({ dateFilter: filterSelect.value });
+  });
 
   if (allCourses.length === 0) {
     const p = document.createElement("p");
