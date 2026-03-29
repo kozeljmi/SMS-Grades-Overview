@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SMS Grades Overview",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Shows a grades overview on the sms.eursc.eu dashboard",
   "icons": {
     "16": "icons/icon16.png",

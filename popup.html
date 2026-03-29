@@ -5,17 +5,37 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <h1>SMS Grades</h1>
-  <div id="course-list"></div>
-  <div class="filter-section">
-    <label class="filter-label" for="date-filter">Date filter</label>
-    <select id="date-filter" class="filter-select">
-      <option value="all">All grades</option>
-      <option value="before">Before 27 Feb</option>
-      <option value="after">After 27 Feb</option>
-    </select>
-  </div>
-  <footer class="credits">&copy; 2026 KOZELJ Michele. All rights reserved.</footer>
+  <header class="header">
+    <span class="header-title">SMS Grades</span>
+    <span class="header-version">v1.4.0</span>
+  </header>
+
+  <main class="content">
+    <section class="section">
+      <h2 class="section-title">Courses</h2>
+      <div id="course-list"></div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Date Filter</h2>
+      <div class="filter-row">
+        <select id="date-filter" class="input">
+          <option value="all">All grades</option>
+          <option value="before">Before date</option>
+          <option value="after">After date</option>
+        </select>
+      </div>
+      <div class="filter-row" id="date-input-row" style="display:none;">
+        <input type="date" id="date-cutoff" class="input">
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>&copy; 2026 KOZELJ Michele</span>
+    <a href="https://github.com/kozeljmi/SMS-Grades-Overview" target="_blank" rel="noopener" class="footer-link">GitHub</a>
+  </footer>
+
   <script src="popup.js"></script>
 </body>
 </html>

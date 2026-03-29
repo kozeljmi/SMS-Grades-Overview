@@ -104,18 +104,16 @@
     return { grades, weightedAvg, gradedCount: graded.length, totalCount: grades.length };
   }
 
-  const DATE_CUTOFF = new Date(2026, 1, 27); // Feb 27, 2026
-
   function parseDate(str) {
     const [d, m, y] = str.split("/").map(Number);
     return new Date(y, m - 1, d);
   }
 
-  function applyDateFilter(data, filter) {
+  function applyDateFilter(data, filter, cutoff) {
     if (filter === "all") return data;
     const filtered = data.grades.filter((g) => {
       const d = parseDate(g.date);
-      return filter === "before" ? d < DATE_CUTOFF : d >= DATE_CUTOFF;
+      return filter === "before" ? d < cutoff : d >= cutoff;
     });
     const graded = filtered.filter((g) => g.isGraded && g.weight > 0);
     let weightedAvg = null;
@@ -297,7 +295,8 @@
     LOG("Saved course list to storage");
 
     // Step 2: Read settings
-    const { hiddenCourses = [], dateFilter = "all" } = await chrome.storage.local.get(["hiddenCourses", "dateFilter"]);
+    const { hiddenCourses = [], dateFilter = "all", dateCutoff = "2026-02-27" } = await chrome.storage.local.get(["hiddenCourses", "dateFilter", "dateCutoff"]);
+    const cutoffDate = new Date(dateCutoff);
     const hiddenSet = new Set(hiddenCourses);
     const visibleCourses = allCourses.filter((c) => !hiddenSet.has(c.id));
     LOG(`Visible: ${visibleCourses.length}, hidden: ${hiddenCourses.length}`);
@@ -330,7 +329,7 @@
     LOG(`Date filter: ${dateFilter}`);
     const filtered = results.map((r) => {
       if (!r.data) return r;
-      return { ...r, data: applyDateFilter(r.data, dateFilter) };
+      return { ...r, data: applyDateFilter(r.data, dateFilter, cutoffDate) };
     });
 
     LOG("All courses fetched, rendering...");
