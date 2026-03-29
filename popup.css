@@ -133,32 +133,6 @@ body {
   transform: translateX(16px);
 }
 
-/* Filter */
-.filter-row {
-  margin-bottom: 6px;
-}
-
-.filter-row:last-child {
-  margin-bottom: 0;
-}
-
-.input {
-  width: 100%;
-  padding: 6px 8px;
-  font-size: 12px;
-  font-family: inherit;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.input:focus {
-  border-color: var(--primary);
-}
-
 /* Empty state */
 .empty {
   color: var(--muted);

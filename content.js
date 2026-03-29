@@ -5,6 +5,13 @@
   const ERR = (typeof DEV === "undefined" || DEV) ? (...args) => console.error("[SMS Grades]", ...args) : () => {};
 
   const BASE_URL = "https://sms.eursc.eu/content/studentui/grades_details.php";
+  const DEFAULT_CUTOFF = "2026-02-27";
+
+  // --- Raw results cache (fetched once, filtered on every render) ---
+  let allCourses = [];
+  let rawResults = []; // { course, data, error } with unfiltered data
+
+  // --- DOM helpers ---
 
   function el(tag, attrs, children) {
     const e = document.createElement(tag);
@@ -30,6 +37,8 @@
     while (node.firstChild) node.removeChild(node.firstChild);
   }
 
+  // --- Network ---
+
   function fetchPage(url) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({ type: "fetchPage", url }, (response) => {
@@ -44,6 +53,8 @@
     });
   }
 
+  // --- Parsing ---
+
   function parseCourseList(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
@@ -57,9 +68,7 @@
     for (const option of select.options) {
       const id = option.value.trim();
       const name = option.textContent.trim();
-      if (id) {
-        courses.push({ id, name });
-      }
+      if (id) courses.push({ id, name });
     }
     LOG(`Discovered ${courses.length} courses:`, courses.map((c) => c.name).join(", "));
     return courses;
@@ -68,9 +77,7 @@
   function parseGradesHtml(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
-
     const rows = doc.querySelectorAll(".tablesorter tbody tr");
-    LOG(`Found ${rows.length} grade rows`);
 
     const grades = [];
     for (const row of rows) {
@@ -81,12 +88,10 @@
       const type = cells[1]?.textContent.trim();
       const description = cells[2]?.textContent.trim();
       const weight = parseFloat(cells[3]?.textContent.trim()) || 0;
-
       const lastCell = cells[cells.length - 1];
       const gradeText = lastCell?.textContent.trim();
       const isGraded = gradeText !== "Not yet graded" && !isNaN(parseFloat(gradeText));
       const gradeValue = isGraded ? parseFloat(gradeText) : null;
-
       const actualGrade = cells.length >= 6 ? cells[4]?.textContent.trim() : "";
 
       grades.push({ date, type, description, weight, actualGrade, gradeValue, isGraded });
@@ -100,9 +105,10 @@
       weightedAvg = totalWeighted / totalWeight;
     }
 
-    LOG(`Parsed: ${graded.length} graded, ${grades.length} total, avg=${weightedAvg?.toFixed(1) ?? "N/A"}`);
     return { grades, weightedAvg, gradedCount: graded.length, totalCount: grades.length };
   }
+
+  // --- Filtering ---
 
   function parseDate(str) {
     const [d, m, y] = str.split("/").map(Number);
@@ -135,11 +141,14 @@
     return "#f8696b";
   }
 
+  // --- Widget skeleton ---
+
   function createWidget() {
     return el("div", { id: "sms-grades-widget" }, [
       el("div", { className: "sms-grades-header" }, [
         el("h3", { textContent: "Grades Overview" }),
         el("div", { className: "sms-grades-general-avg", id: "sms-grades-general-avg" }),
+        el("div", { className: "sms-grades-filter", id: "sms-grades-filter" }),
       ]),
       el("div", { className: "sms-grades-cards", id: "sms-grades-cards" }, [
         el("div", { className: "sms-grades-loading", textContent: "Loading grades..." }),
@@ -152,6 +161,39 @@
       ]),
     ]);
   }
+
+  // --- Date filter controls (in widget) ---
+
+  function renderFilterControls(dateFilter, dateCutoff) {
+    const container = document.getElementById("sms-grades-filter");
+    if (!container) return;
+    clearChildren(container);
+
+    const select = el("select", { className: "sms-filter-select" });
+    for (const [value, label] of [["all", "All grades"], ["before", "Before date"], ["after", "After date"]]) {
+      const opt = el("option", { value, textContent: label });
+      if (value === dateFilter) opt.selected = true;
+      select.appendChild(opt);
+    }
+
+    const dateInput = el("input", { className: "sms-filter-date", type: "date", value: dateCutoff });
+    if (dateFilter === "all") dateInput.style.display = "none";
+
+    select.addEventListener("change", () => {
+      const mode = select.value;
+      dateInput.style.display = mode === "all" ? "none" : "";
+      chrome.storage.local.set({ dateFilter: mode });
+    });
+
+    dateInput.addEventListener("change", () => {
+      chrome.storage.local.set({ dateCutoff: dateInput.value });
+    });
+
+    container.appendChild(select);
+    container.appendChild(dateInput);
+  }
+
+  // --- Render functions ---
 
   function renderGeneralAverage(results) {
     const container = document.getElementById("sms-grades-general-avg");
@@ -166,7 +208,6 @@
 
     const generalAvg = subjectAverages.reduce((sum, v) => sum + v, 0) / subjectAverages.length;
     const color = gradeColor(generalAvg);
-    LOG(`General average: ${generalAvg.toFixed(1)} across ${subjectAverages.length} subjects`);
 
     container.appendChild(
       el("span", { className: "sms-general-avg-badge", style: { backgroundColor: color }, textContent: generalAvg.toFixed(1) })
@@ -176,15 +217,33 @@
     );
   }
 
+  function hideCourse(courseId) {
+    chrome.storage.local.get("hiddenCourses", ({ hiddenCourses = [] }) => {
+      const updated = new Set(hiddenCourses);
+      updated.add(courseId);
+      chrome.storage.local.set({ hiddenCourses: [...updated] });
+    });
+  }
+
   function renderCards(results) {
     const container = document.getElementById("sms-grades-cards");
     if (!container) return;
 
     clearChildren(container);
-    LOG(`Rendering ${results.length} course cards`);
+
+    if (results.length === 0) {
+      container.appendChild(el("div", { className: "sms-grades-empty", textContent: "All courses are hidden. Use the extension popup to show courses." }));
+      return;
+    }
 
     for (const { course, data, error } of results) {
       const nameEl = el("div", { className: "sms-grade-card-name", textContent: course.name });
+
+      const dismissBtn = el("button", { className: "sms-grade-card-dismiss", textContent: "\u00d7" });
+      dismissBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        hideCourse(course.id);
+      });
 
       let avgEl, infoEl;
       if (error) {
@@ -198,7 +257,7 @@
         infoEl = el("div", { className: "sms-grade-card-info", textContent: `${data.gradedCount} / ${data.totalCount} graded` });
       }
 
-      container.appendChild(el("div", { className: "sms-grade-card" }, [nameEl, avgEl, infoEl]));
+      container.appendChild(el("div", { className: "sms-grade-card" }, [dismissBtn, nameEl, avgEl, infoEl]));
     }
   }
 
@@ -210,9 +269,7 @@
     for (const { course, data } of results) {
       if (!data) continue;
       for (const g of data.grades) {
-        if (g.isGraded) {
-          allGraded.push({ ...g, courseName: course.name });
-        }
+        if (g.isGraded) allGraded.push({ ...g, courseName: course.name });
       }
     }
 
@@ -223,8 +280,6 @@
     });
 
     const recent = allGraded.slice(0, 10);
-    LOG(`Rendering ${recent.length} recent grades`);
-
     clearChildren(container);
 
     if (recent.length === 0) {
@@ -255,6 +310,33 @@
     ]));
   }
 
+  // --- Reactive render: filter raw data + render, no fetch ---
+
+  async function renderAll() {
+    const { hiddenCourses = [], dateFilter = "all", dateCutoff = DEFAULT_CUTOFF } = await chrome.storage.local.get(["hiddenCourses", "dateFilter", "dateCutoff"]);
+    const cutoffDate = new Date(dateCutoff);
+    const hiddenSet = new Set(hiddenCourses);
+
+    // Filter visible courses from raw results
+    const visible = rawResults.filter((r) => !hiddenSet.has(r.course.id));
+
+    // Apply date filter
+    const filtered = visible.map((r) => {
+      if (!r.data) return r;
+      return { ...r, data: applyDateFilter(r.data, dateFilter, cutoffDate) };
+    });
+
+    LOG(`renderAll: ${visible.length} visible, filter=${dateFilter}, cutoff=${dateCutoff}`);
+
+    // Update filter controls to reflect current state (without re-creating if values match)
+    renderFilterControls(dateFilter, dateCutoff);
+    renderGeneralAverage(filtered);
+    renderCards(filtered);
+    renderRecent(filtered);
+  }
+
+  // --- Init: fetch once, then set up reactive rendering ---
+
   async function init() {
     LOG("Initializing...");
 
@@ -264,13 +346,11 @@
       return;
     }
 
-    LOG("Dashboard wrapper found, injecting widget");
     const widget = createWidget();
     wrapper.prepend(widget);
 
     // Step 1: Discover courses
     LOG("Fetching course list...");
-    let allCourses;
     try {
       const html = await fetchPage(BASE_URL);
       allCourses = parseCourseList(html);
@@ -283,60 +363,43 @@
     }
 
     if (allCourses.length === 0) {
-      LOG("No courses found");
       const cards = document.getElementById("sms-grades-cards");
       clearChildren(cards);
       cards.appendChild(el("div", { className: "sms-grades-empty", textContent: "No courses found." }));
       return;
     }
 
-    // Save course list for the popup
     chrome.storage.local.set({ allCourses });
-    LOG("Saved course list to storage");
 
-    // Step 2: Read settings
-    const { hiddenCourses = [], dateFilter = "all", dateCutoff = "2026-02-27" } = await chrome.storage.local.get(["hiddenCourses", "dateFilter", "dateCutoff"]);
-    const cutoffDate = new Date(dateCutoff);
-    const hiddenSet = new Set(hiddenCourses);
-    const visibleCourses = allCourses.filter((c) => !hiddenSet.has(c.id));
-    LOG(`Visible: ${visibleCourses.length}, hidden: ${hiddenCourses.length}`);
-
-    if (visibleCourses.length === 0) {
-      const cards = document.getElementById("sms-grades-cards");
-      clearChildren(cards);
-      cards.appendChild(el("div", { className: "sms-grades-empty", textContent: "All courses are hidden. Use the extension popup to show courses." }));
-      clearChildren(document.getElementById("sms-grades-recent"));
-      return;
-    }
-
-    // Step 3: Fetch grades for each visible course
-    const results = [];
-    const promises = visibleCourses.map(async (course) => {
+    // Step 2: Fetch grades for ALL courses (raw, unfiltered)
+    const promises = allCourses.map(async (course) => {
       try {
         LOG(`Fetching grades for ${course.name} (${course.id})...`);
         const html = await fetchPage(`${BASE_URL}?course_id=${course.id}`);
         const data = parseGradesHtml(html);
-        results.push({ course, data, error: null });
+        return { course, data, error: null };
       } catch (err) {
         ERR(`Failed to fetch ${course.name} (${course.id}):`, err.message);
-        results.push({ course, data: null, error: err.message });
+        return { course, data: null, error: err.message };
       }
     });
 
-    await Promise.all(promises);
+    rawResults = await Promise.all(promises);
+    LOG(`Fetched ${rawResults.length} courses`);
 
-    // Step 4: Apply date filter
-    LOG(`Date filter: ${dateFilter}`);
-    const filtered = results.map((r) => {
-      if (!r.data) return r;
-      return { ...r, data: applyDateFilter(r.data, dateFilter, cutoffDate) };
+    // Step 3: Initial render
+    await renderAll();
+
+    // Step 4: Listen for storage changes → re-render reactively
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      if ("hiddenCourses" in changes || "dateFilter" in changes || "dateCutoff" in changes) {
+        LOG("Settings changed, re-rendering...");
+        renderAll();
+      }
     });
 
-    LOG("All courses fetched, rendering...");
-    renderGeneralAverage(filtered);
-    renderCards(filtered);
-    renderRecent(filtered);
-    LOG("Done!");
+    LOG("Done — reactive listener active");
   }
 
   if (document.readyState === "loading") {

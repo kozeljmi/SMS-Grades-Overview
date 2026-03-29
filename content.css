@@ -11,11 +11,13 @@
   z-index: 1;
 }
 
+/* Header */
 .sms-grades-header {
   display: flex;
   align-items: center;
   gap: 16px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .sms-grades-header h3 {
@@ -44,6 +46,32 @@
   color: #666;
 }
 
+/* Filter controls in header */
+.sms-grades-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.sms-filter-select,
+.sms-filter-date {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: #333;
+  outline: none;
+}
+
+.sms-filter-select:focus,
+.sms-filter-date:focus {
+  border-color: #1a73e8;
+}
+
+/* Cards */
 .sms-grades-cards {
   display: flex;
   flex-wrap: wrap;
@@ -52,6 +80,7 @@
 }
 
 .sms-grade-card {
+  position: relative;
   flex: 1 1 140px;
   max-width: 200px;
   border: 1px solid #e0e0e0;
@@ -59,6 +88,35 @@
   padding: 12px;
   text-align: center;
   background: #fafafa;
+}
+
+/* Dismiss button */
+.sms-grade-card-dismiss {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 20px;
+  text-align: center;
+  cursor: pointer;
+  color: #aaa;
+  border-radius: 50%;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.sms-grade-card:hover .sms-grade-card-dismiss {
+  opacity: 1;
+}
+
+.sms-grade-card-dismiss:hover {
+  color: #fff;
+  background-color: #e53935;
 }
 
 .sms-grade-card-name {
@@ -85,6 +143,7 @@
   color: #888;
 }
 
+/* Recent grades section */
 .sms-grades-section h4 {
   margin: 0 0 8px 0;
   font-size: 14px;

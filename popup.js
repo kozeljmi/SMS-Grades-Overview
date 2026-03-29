@@ -1,33 +1,11 @@
 (async function () {
-  const DEFAULT_CUTOFF = "2026-02-27";
   const container = document.getElementById("course-list");
-  const filterSelect = document.getElementById("date-filter");
-  const dateInputRow = document.getElementById("date-input-row");
-  const dateInput = document.getElementById("date-cutoff");
 
   const {
     allCourses = [],
     hiddenCourses = [],
-    dateFilter = "all",
-    dateCutoff = DEFAULT_CUTOFF,
-  } = await chrome.storage.local.get(["allCourses", "hiddenCourses", "dateFilter", "dateCutoff"]);
+  } = await chrome.storage.local.get(["allCourses", "hiddenCourses"]);
 
-  // --- Date filter ---
-  filterSelect.value = dateFilter;
-  dateInput.value = dateCutoff;
-  dateInputRow.style.display = dateFilter === "all" ? "none" : "";
-
-  filterSelect.addEventListener("change", () => {
-    const mode = filterSelect.value;
-    dateInputRow.style.display = mode === "all" ? "none" : "";
-    chrome.storage.local.set({ dateFilter: mode });
-  });
-
-  dateInput.addEventListener("change", () => {
-    chrome.storage.local.set({ dateCutoff: dateInput.value });
-  });
-
-  // --- Course list ---
   if (allCourses.length === 0) {
     const p = document.createElement("p");
     p.className = "empty";
