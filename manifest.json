@@ -1,14 +1,14 @@
 {
   "manifest_version": 3,
   "name": "SMS Grades Overview",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Shows a grades overview on the sms.eursc.eu dashboard",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["storage"],
   "host_permissions": ["https://sms.eursc.eu/*"],
   "background": {
     "service_worker": "background.js"
