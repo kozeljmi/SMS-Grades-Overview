@@ -197,3 +197,19 @@
   font-style: italic;
   padding: 8px 0;
 }
+
+/* Disco mode */
+@keyframes sms-disco {
+  0%   { background-color: #ff0000; }
+  16%  { background-color: #ff8800; }
+  33%  { background-color: #ffff00; }
+  50%  { background-color: #00ff00; }
+  66%  { background-color: #0088ff; }
+  83%  { background-color: #8800ff; }
+  100% { background-color: #ff0000; }
+}
+
+.sms-disco-cell {
+  animation: sms-disco 1.5s linear infinite;
+}
+

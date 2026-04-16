@@ -50,4 +50,12 @@
     else updated.add(courseId);
     await chrome.storage.local.set({ hiddenCourses: [...updated] });
   }
+
+  // Disco mode toggle
+  const discoToggle = document.getElementById("disco-toggle");
+  const { discoMode = false } = await chrome.storage.local.get("discoMode");
+  discoToggle.checked = discoMode;
+  discoToggle.addEventListener("change", () => {
+    chrome.storage.local.set({ discoMode: discoToggle.checked });
+  });
 })();

@@ -397,14 +397,81 @@
         LOG("Settings changed, re-rendering...");
         renderAll();
       }
+      if ("discoMode" in changes) {
+        const table = findAttendanceTable();
+        if (table) setDisco(table, !!changes.discoMode.newValue);
+      }
     });
 
     LOG("Done — reactive listener active");
   }
 
+  // --- Disco mode for attendance grid ---
+
+  function findAttendanceTable() {
+    const headers = document.querySelectorAll(".dashlet_header");
+    for (const h of headers) {
+      if (h.textContent.trim().startsWith("Attendance")) {
+        const content = h.nextElementSibling;
+        if (content) return content.querySelector("table");
+      }
+    }
+    return null;
+  }
+
+  function setDisco(table, on) {
+    const rows = table.querySelectorAll("tbody tr");
+    for (const row of rows) {
+      const cells = row.querySelectorAll("td");
+      for (let i = 1; i < cells.length; i++) {
+        if (on) {
+          if (!cells[i].dataset.origBg) {
+            cells[i].dataset.origBg = cells[i].style.backgroundColor || "";
+          }
+          cells[i].style.backgroundColor = "";
+          cells[i].classList.add("sms-disco-cell");
+          cells[i].style.animationDelay = (Math.random() * 1.5).toFixed(2) + "s";
+        } else {
+          cells[i].classList.remove("sms-disco-cell");
+          cells[i].style.animationDelay = "";
+          if (cells[i].dataset.origBg !== undefined) {
+            cells[i].style.backgroundColor = cells[i].dataset.origBg;
+            delete cells[i].dataset.origBg;
+          }
+        }
+      }
+    }
+  }
+
+  function initDisco() {
+    const table = findAttendanceTable();
+    if (!table) {
+      LOG("Attendance table not found, retrying...");
+      return false;
+    }
+    if (table.dataset.discoReady) return true;
+    table.dataset.discoReady = "1";
+
+    chrome.storage.local.get("discoMode", ({ discoMode }) => {
+      if (discoMode) setDisco(table, true);
+    });
+
+    LOG("Disco mode initialized");
+    return true;
+  }
+
+  function waitForAttendance() {
+    if (initDisco()) return;
+    const observer = new MutationObserver(() => {
+      if (initDisco()) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", () => { init(); waitForAttendance(); });
   } else {
     init();
+    waitForAttendance();
   }
 })();
