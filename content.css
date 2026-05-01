@@ -213,3 +213,33 @@
   animation: sms-disco 1.5s linear infinite;
 }
 
+/* Jumpscare mode */
+.sms-jumpscare {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: transparent;
+  pointer-events: none;
+  animation: sms-jumpscare-fade 0.8s ease-out forwards;
+}
+
+.sms-jumpscare-img {
+  position: fixed;
+  transform: translate(-50%, -50%) scale(0);
+  animation: sms-jumpscare-grow 1s ease-out forwards;
+}
+
+@keyframes sms-jumpscare-fade {
+  0%   { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes sms-jumpscare-grow {
+  0%   { transform: translate(-50%, -50%) scale(0); }
+  15%  { transform: translate(-50%, -50%) scale(1.2); }
+  25%  { transform: translate(-50%, -50%) scale(1); }
+  60%  { transform: translate(-50%, -50%) scale(1); }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+

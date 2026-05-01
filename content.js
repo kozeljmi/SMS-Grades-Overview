@@ -401,9 +401,78 @@
         const table = findAttendanceTable();
         if (table) setDisco(table, !!changes.discoMode.newValue);
       }
+      if ("jumpscareMode" in changes) {
+        if (changes.jumpscareMode.newValue) scheduleJumpscare();
+        else stopJumpscare();
+      }
     });
 
     LOG("Done — reactive listener active");
+  }
+
+  // --- Jumpscare mode ---
+
+  const JUMPSCARE_IMAGES = ["scares/epstein.png", "scares/jumptrump.png", "scares/stephen.png"];
+  const JUMPSCARE_MIN_INTERVAL = 30000;
+  const JUMPSCARE_MAX_INTERVAL = 120000;
+
+  let jumpscareTimer = null;
+  let lastMouseX = window.innerWidth / 2;
+  let lastMouseY = window.innerHeight / 2;
+
+  document.addEventListener("mousemove", (e) => {
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  });
+
+  function triggerJumpscare() {
+    const src = JUMPSCARE_IMAGES[Math.floor(Math.random() * JUMPSCARE_IMAGES.length)];
+    const overlay = el("div", { className: "sms-jumpscare" });
+    const imgEl = el("img", {
+      src: chrome.runtime.getURL(src),
+      className: "sms-jumpscare-img",
+    });
+    imgEl.style.left = lastMouseX + "px";
+    imgEl.style.top = lastMouseY + "px";
+    overlay.appendChild(imgEl);
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 800);
+    scheduleJumpscare();
+  }
+
+  function scheduleJumpscare() {
+    clearTimeout(jumpscareTimer);
+    const delay = JUMPSCARE_MIN_INTERVAL + Math.random() * (JUMPSCARE_MAX_INTERVAL - JUMPSCARE_MIN_INTERVAL);
+    jumpscareTimer = setTimeout(triggerJumpscare, delay);
+    LOG(`Next jumpscare in ${(delay / 1000).toFixed(0)}s`);
+  }
+
+  function stopJumpscare() {
+    clearTimeout(jumpscareTimer);
+    jumpscareTimer = null;
+  }
+
+  let lastManualScare = 0;
+  const MANUAL_COOLDOWN = 2; //200000;
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "e" || e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+    if (jumpscareTimer === null) return;
+    const now = Date.now();
+    if (now - lastManualScare < MANUAL_COOLDOWN) return;
+    lastManualScare = now;
+    triggerJumpscare();
+  });
+
+  function initJumpscare() {
+    chrome.storage.local.get("jumpscareMode", ({ jumpscareMode }) => {
+      if (jumpscareMode === undefined) {
+        chrome.storage.local.set({ jumpscareMode: true });
+        scheduleJumpscare();
+      } else if (jumpscareMode) {
+        scheduleJumpscare();
+      }
+    });
   }
 
   // --- Disco mode for attendance grid ---
@@ -469,9 +538,10 @@
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => { init(); waitForAttendance(); });
+    document.addEventListener("DOMContentLoaded", () => { init(); waitForAttendance(); initJumpscare(); });
   } else {
     init();
     waitForAttendance();
+    initJumpscare();
   }
 })();

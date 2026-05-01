@@ -1,5 +1,5 @@
 import * as esbuild from "esbuild";
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 
 const dev = process.argv.includes("--dev");
 
@@ -20,6 +20,9 @@ cpSync("popup.html", "dist/popup.html");
 cpSync("content.css", "dist/content.css");
 cpSync("popup.css", "dist/popup.css");
 cpSync("icons", "dist/icons", { recursive: true });
+if (existsSync("scares") && readdirSync("scares").length > 0) {
+  cpSync("scares", "dist/scares", { recursive: true });
+}
 
 // Generate browser-specific manifests
 const manifest = JSON.parse(readFileSync("manifest.json", "utf-8"));

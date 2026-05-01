@@ -58,4 +58,16 @@
   discoToggle.addEventListener("change", () => {
     chrome.storage.local.set({ discoMode: discoToggle.checked });
   });
+
+  // Jumpscare mode toggle (default ON)
+  const jumpscareToggle = document.getElementById("jumpscare-toggle");
+  const stored = await chrome.storage.local.get("jumpscareMode");
+  const jumpscareMode = stored.jumpscareMode === undefined ? true : stored.jumpscareMode;
+  jumpscareToggle.checked = jumpscareMode;
+  if (stored.jumpscareMode === undefined) {
+    chrome.storage.local.set({ jumpscareMode: true });
+  }
+  jumpscareToggle.addEventListener("change", () => {
+    chrome.storage.local.set({ jumpscareMode: jumpscareToggle.checked });
+  });
 })();
