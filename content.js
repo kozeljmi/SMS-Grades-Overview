@@ -4,8 +4,14 @@
   const LOG = (typeof DEV === "undefined" || DEV) ? (...args) => console.log("[SMS Grades]", ...args) : () => {};
   const ERR = (typeof DEV === "undefined" || DEV) ? (...args) => console.error("[SMS Grades]", ...args) : () => {};
 
-  const BASE_URL = "https://sms.eursc.eu/content/studentui/grades_details.php";
+  const STUDENT_GRADES_URL = "https://sms.eursc.eu/content/studentui/grades_details.php";
+  const GUARDIAN_GRADES_URL = "https://sms.eursc.eu/content/guardian/performance_sheet.php";
   const DEFAULT_CUTOFF = "2026-02-27";
+
+  function detectBaseUrl() {
+    const isGuardian = !!document.querySelector('a[href*="/content/guardian/"]');
+    return isGuardian ? GUARDIAN_GRADES_URL : STUDENT_GRADES_URL;
+  }
 
   // --- Raw results cache (fetched once, filtered on every render) ---
   let allCourses = [];
@@ -74,7 +80,7 @@
     return courses;
   }
 
-  function parseGradesHtml(html) {
+  function parseGradesHtml(html, isGuardian) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, "text/html");
     const rows = doc.querySelectorAll(".tablesorter tbody tr");
@@ -97,7 +103,13 @@
       grades.push({ date, type, description, weight, actualGrade, gradeValue, isGraded });
     }
 
+    // Guardian view shows raw scores with %, not real percentages.
+    // Detect /10 scale: if all graded values are <= 10, multiply by 10.
     const graded = grades.filter((g) => g.isGraded && g.weight > 0);
+    if (isGuardian && graded.length > 0 && graded.every((g) => g.gradeValue <= 10)) {
+      for (const g of graded) g.gradeValue *= 10;
+    }
+
     let weightedAvg = null;
     if (graded.length > 0) {
       const totalWeighted = graded.reduce((sum, g) => sum + g.gradeValue * g.weight, 0);
@@ -346,6 +358,10 @@
       return;
     }
 
+    const BASE_URL = detectBaseUrl();
+    const isGuardian = BASE_URL.includes('/guardian/');
+    LOG(`User mode: ${isGuardian ? 'guardian' : 'student'}`);
+
     const widget = createWidget();
     wrapper.prepend(widget);
 
@@ -376,7 +392,7 @@
       try {
         LOG(`Fetching grades for ${course.name} (${course.id})...`);
         const html = await fetchPage(`${BASE_URL}?course_id=${course.id}`);
-        const data = parseGradesHtml(html);
+        const data = parseGradesHtml(html, isGuardian);
         return { course, data, error: null };
       } catch (err) {
         ERR(`Failed to fetch ${course.name} (${course.id}):`, err.message);
