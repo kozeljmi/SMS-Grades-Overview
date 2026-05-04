@@ -475,6 +475,214 @@
     });
   }
 
+  // --- Schedule + Attendance ---
+
+  const SCHEDULE_URL = "https://sms.eursc.eu/data/common_handler.php?action=Contact::AJAX_U_GetSchedule";
+  const ATTENDANCE_URL = "https://sms.eursc.eu/data/common_handler.php?action=User_Attendance::AJAX_U_GetStudentAbsenceDetails";
+  const SCHOOL_YEAR_START = "2025-09-01";
+
+  function parseAttendanceDates() {
+    const table = findAttendanceTable();
+    if (!table) return null;
+
+    const cells = table.querySelectorAll("td[onclick]");
+    if (cells.length === 0) return null;
+
+    let userId = null;
+    const dates = [];
+    for (const cell of cells) {
+      const onclick = cell.getAttribute("onclick");
+      const match = onclick.match(/fetchAttendanceDetails\((\d+),\s*"([^"]+)"\)/);
+      if (match) {
+        if (!userId) userId = match[1];
+        dates.push(match[2]);
+      }
+    }
+    return { userId, dates };
+  }
+
+  async function fetchSchedule(userId) {
+    const start = Math.floor(new Date(SCHOOL_YEAR_START).getTime() / 1000);
+    const end = Math.floor(Date.now() / 1000);
+    const res = await fetch(SCHEDULE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest" },
+      body: `user_id=${userId}&inc_appointment=true&start=${start}&end=${end}`,
+      credentials: "include",
+    });
+    return res.json();
+  }
+
+  function buildCourseSchedule(entries) {
+    const courses = {};
+    for (const e of entries) {
+      if (e.entry_type !== "Course") continue;
+      if (!courses[e.title]) {
+        courses[e.title] = {
+          code: e.title,
+          id: e.id,
+          courseId: e.course_id,
+          color: e.color,
+          teacher: e.teacher_name_list,
+          totalPeriods: 0,
+        };
+      }
+      courses[e.title].totalPeriods++;
+    }
+    return courses;
+  }
+
+  async function fetchAttendanceDetail(userId, date) {
+    const res = await fetch(ATTENDANCE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Requested-With": "XMLHttpRequest" },
+      body: `user_id=${userId}&date=${date}`,
+      credentials: "include",
+    });
+    return res.text();
+  }
+
+  function parseAttendanceDetail(html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const rows = doc.querySelectorAll("tr.row-hover-style, tr[class*='row-hover']");
+    const records = [];
+    for (const row of rows) {
+      const cells = row.querySelectorAll("td");
+      if (cells.length < 4) continue;
+      records.push({
+        date: cells[0].textContent.trim(),
+        period: cells[1].textContent.trim(),
+        course: cells[2].textContent.trim(),
+        status: cells[3].textContent.trim(),
+      });
+    }
+    return records;
+  }
+
+  function countAbsences(allRecords) {
+    const byCourse = {};
+    for (const r of allRecords) {
+      if (r.status.toLowerCase() !== "absent") continue;
+      byCourse[r.course] = (byCourse[r.course] || 0) + 1;
+    }
+    return byCourse;
+  }
+
+  function attendanceColor(pct) {
+    if (pct >= 95) return "#63be7b";
+    if (pct >= 85) return "#a2d07f";
+    if (pct >= 75) return "#e0e383";
+    if (pct >= 60) return "#fdd17f";
+    if (pct >= 40) return "#fa9d75";
+    return "#f8696b";
+  }
+
+  function renderAttendanceSection(courseSchedule, absences) {
+    let section = document.getElementById("sms-attendance-section");
+    if (!section) {
+      const widget = document.getElementById("sms-grades-widget");
+      if (!widget) return;
+      section = el("div", { id: "sms-attendance-section", className: "sms-grades-section" }, [
+        el("h4", { textContent: "Attendance by Course" }),
+        el("div", { id: "sms-attendance-content" }),
+      ]);
+      widget.appendChild(section);
+    }
+
+    const container = document.getElementById("sms-attendance-content");
+    clearChildren(container);
+
+    const rows = Object.values(courseSchedule)
+      .map((c) => {
+        const absent = absences[c.code] || 0;
+        const present = c.totalPeriods - absent;
+        const pct = c.totalPeriods > 0 ? (present / c.totalPeriods) * 100 : 100;
+        return { ...c, absent, present, pct };
+      })
+      .sort((a, b) => a.pct - b.pct);
+
+    if (rows.length === 0) {
+      container.appendChild(el("div", { className: "sms-grades-empty", textContent: "No attendance data found." }));
+      return;
+    }
+
+    const headerRow = el("tr", null, ["Course", "Present", "Absent", "Total", "Rate"].map(
+      (text) => el("th", { textContent: text })
+    ));
+
+    const tbody = el("tbody");
+    for (const r of rows) {
+      const color = attendanceColor(r.pct);
+      tbody.appendChild(el("tr", null, [
+        el("td", { textContent: r.code }),
+        el("td", { textContent: String(r.present) }),
+        el("td", { textContent: String(r.absent) }),
+        el("td", { textContent: String(r.totalPeriods) }),
+        el("td", null, [
+          el("span", { className: "sms-grade-badge", style: { backgroundColor: color }, textContent: r.pct.toFixed(0) + "%" }),
+        ]),
+      ]));
+    }
+
+    container.appendChild(el("table", { className: "sms-grades-table" }, [
+      el("thead", null, [headerRow]),
+      tbody,
+    ]));
+  }
+
+  async function fetchAndRenderAttendance() {
+    const parsed = parseAttendanceDates();
+    if (!parsed) {
+      LOG("No clickable attendance dates found");
+      return;
+    }
+
+    const { userId, dates } = parsed;
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Check cache
+    const { attendanceCache: cached } = await chrome.storage.local.get("attendanceCache");
+    if (cached && cached.date === today && cached.dateCount === dates.length) {
+      LOG("Using cached attendance data");
+      renderAttendanceSection(cached.courseSchedule, cached.absences);
+      return;
+    }
+
+    LOG(`Fetching schedule for user ${userId}...`);
+    let courseSchedule;
+    try {
+      const entries = await fetchSchedule(userId);
+      courseSchedule = buildCourseSchedule(entries);
+      // Store for other parts of the extension
+      chrome.storage.local.set({ courseSchedule });
+      LOG(`Schedule: ${Object.keys(courseSchedule).length} courses, ${entries.length} total periods`);
+    } catch (err) {
+      ERR("Failed to fetch schedule:", err.message);
+      return;
+    }
+
+    LOG(`Fetching absence details for ${dates.length} dates...`);
+    const allRecords = [];
+    for (const date of dates) {
+      try {
+        const html = await fetchAttendanceDetail(userId, date);
+        const records = parseAttendanceDetail(html);
+        allRecords.push(...records);
+      } catch (err) {
+        ERR(`Failed to fetch attendance for ${date}:`, err.message);
+      }
+    }
+
+    const absences = countAbsences(allRecords);
+    LOG("Absences by course:", absences);
+
+    // Cache
+    chrome.storage.local.set({ attendanceCache: { date: today, dateCount: dates.length, courseSchedule, absences } });
+
+    renderAttendanceSection(courseSchedule, absences);
+  }
+
   // --- Disco mode for attendance grid ---
 
   function findAttendanceTable() {
@@ -524,6 +732,8 @@
     chrome.storage.local.get("discoMode", ({ discoMode }) => {
       if (discoMode) setDisco(table, true);
     });
+
+    fetchAndRenderAttendance();
 
     LOG("Disco mode initialized");
     return true;

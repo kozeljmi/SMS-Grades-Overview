@@ -1,6 +1,6 @@
 {
   "name": "sms-grades-extension",
-  "version": "1.6.7",
+  "version": "1.7.0",
   "private": true,
   "scripts": {
     "dev": "node esbuild.config.mjs --dev",
