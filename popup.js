@@ -4,7 +4,12 @@
   const {
     allCourses = [],
     hiddenCourses = [],
-  } = await chrome.storage.local.get(["allCourses", "hiddenCourses"]);
+    isGuardian = false,
+  } = await chrome.storage.local.get(["allCourses", "hiddenCourses", "isGuardian"]);
+
+  if (isGuardian) {
+    document.getElementById("guardian-banner").style.display = "";
+  }
 
   if (allCourses.length === 0) {
     const p = document.createElement("p");

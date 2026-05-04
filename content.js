@@ -385,7 +385,7 @@
       return;
     }
 
-    chrome.storage.local.set({ allCourses });
+    chrome.storage.local.set({ allCourses, isGuardian });
 
     // Step 2: Fetch grades for ALL courses (raw, unfiltered)
     const promises = allCourses.map(async (course) => {
