@@ -1,0 +1,254 @@
+/* BAC Calculator Page */
+
+#sms-bac-page {
+  padding: 20px;
+  font-family: 'Lato', sans-serif;
+  max-width: 1100px;
+}
+
+/* Header */
+.sms-bac-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.sms-bac-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.sms-bac-back-btn {
+  background: #2f80ed;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.sms-bac-back-btn:hover {
+  background: #1a6dd4;
+}
+
+/* Cards */
+.sms-bac-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 18px 22px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.sms-bac-card--table {
+  padding: 12px;
+  overflow-x: auto;
+}
+
+/* Summary */
+.sms-bac-summary-mark {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sms-bac-summary-details {
+  display: flex;
+  gap: 20px;
+  font-size: 13px;
+  color: #555;
+  flex-wrap: wrap;
+}
+
+.sms-bac-summary-slots {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+  color: #888;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+/* Badge */
+.sms-bac-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  min-width: 36px;
+  text-align: center;
+}
+
+.sms-bac-badge--muted {
+  background: #e0e0e0;
+  color: #777;
+}
+
+/* Target */
+.sms-bac-target-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sms-bac-target-label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.sms-bac-target-result {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  min-height: 20px;
+}
+
+.sms-bac-target-result--success {
+  color: #2e7d32;
+}
+
+.sms-bac-target-result--fail {
+  color: #c62828;
+}
+
+/* Table */
+.sms-bac-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sms-bac-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #666;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.sms-bac-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.sms-bac-table tr:hover {
+  background: #f8f9fb;
+}
+
+.sms-bac-td-name {
+  font-weight: 500;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sms-bac-td-mark {
+  text-align: center;
+}
+
+.sms-bac-td-input {
+  text-align: center;
+}
+
+/* Inputs */
+.sms-bac-input {
+  width: 60px;
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 13px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+
+.sms-bac-input:focus {
+  border-color: #2f80ed;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(47, 128, 237, 0.15);
+}
+
+.sms-bac-input:disabled {
+  background: #f5f5f5;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.sms-bac-input--target {
+  width: 75px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Excluded row */
+.sms-bac-row--excluded {
+  opacity: 0.45;
+}
+
+.sms-bac-row--excluded:hover {
+  opacity: 0.65;
+}
+
+/* Checkbox */
+.sms-bac-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #2f80ed;
+}
+
+/* Checkbox columns */
+.sms-bac-td-check {
+  text-align: center;
+  width: 30px;
+}
+
+.sms-bac-th-check {
+  text-align: center;
+  width: 30px;
+}
+
+/* Validation warnings */
+.sms-bac-validation {
+  margin-bottom: 16px;
+}
+
+.sms-bac-warning {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #6d4c00;
+  margin-bottom: 6px;
+}
+
+/* Disclaimer */
+.sms-bac-disclaimer {
+  font-size: 12px;
+  color: #999;
+  text-align: center;
+  margin-top: 12px;
+}
+
+/* Sidebar active state */
+.sms-bac-nav-link.active a {
+  color: #2f80ed;
+  font-weight: 700;
+}

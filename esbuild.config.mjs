@@ -7,7 +7,7 @@ rmSync("dist", { recursive: true, force: true });
 mkdirSync("dist", { recursive: true });
 
 await esbuild.build({
-  entryPoints: ["content.js", "background.js", "popup.js"],
+  entryPoints: ["content.js", "background.js", "popup.js", "bac.js"],
   bundle: false,
   outdir: "dist",
   banner: { js: `var DEV = ${dev};` },
@@ -18,6 +18,7 @@ await esbuild.build({
 // Copy static files
 cpSync("popup.html", "dist/popup.html");
 cpSync("content.css", "dist/content.css");
+cpSync("bac.css", "dist/bac.css");
 cpSync("popup.css", "dist/popup.css");
 cpSync("icons", "dist/icons", { recursive: true });
 if (existsSync("scares") && readdirSync("scares").length > 0) {

@@ -403,6 +403,10 @@
     rawResults = await Promise.all(promises);
     LOG(`Fetched ${rawResults.length} courses`);
 
+    // Expose data for bac.js
+    window.__smsGradesData = { rawResults, allCourses };
+    document.dispatchEvent(new CustomEvent('sms-grades-ready'));
+
     // Step 3: Initial render
     await renderAll();
 
@@ -763,11 +767,33 @@
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
+  // --- BAC sidebar link ---
+
+  function injectBacSidebarLink() {
+    const nav = document.querySelector('.nav-sidebar ul.navigation');
+    if (!nav) return;
+
+    const li = el('li', { className: 'root_link sms-bac-nav-link' }, [
+      el('a', { href: '#sms-bac' }, [
+        el('i', { className: 'material-icons notranslate root_link__icon icon', textContent: 'school' }),
+        document.createTextNode('BAC Calculator')
+      ])
+    ]);
+
+    li.querySelector('a').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.dispatchEvent(new CustomEvent('sms-bac-navigate', { detail: { action: 'open' } }));
+    });
+
+    nav.appendChild(li);
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => { init(); waitForAttendance(); initJumpscare(); });
+    document.addEventListener("DOMContentLoaded", () => { init(); waitForAttendance(); initJumpscare(); injectBacSidebarLink(); });
   } else {
     init();
     waitForAttendance();
     initJumpscare();
+    injectBacSidebarLink();
   }
 })();

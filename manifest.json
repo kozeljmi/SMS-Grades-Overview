@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SMS Grades Overview",
-  "version": "1.8.0",
-  "description": "Shows a grades overview on the sms.eursc.eu dashboard",
+  "name": "SMS Grades & BAC Calculator",
+  "version": "1.8.8",
+  "description": "Grades overview widget and European Baccalaureate calculator for sms.eursc.eu dashboard (beta)",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -27,8 +27,8 @@
   "content_scripts": [
     {
       "matches": ["https://sms.eursc.eu/content/common/dashboard.php*"],
-      "js": ["content.js"],
-      "css": ["content.css"],
+      "js": ["content.js", "bac.js"],
+      "css": ["content.css", "bac.css"],
       "run_at": "document_idle"
     }
   ]
